@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style>
+        #glyph
+        {
+            width: 800px;
+            height: 800px;
+            display:none;
+        }
+        #glyphImg
+        {
+            width: 800px;
+            height: 800px;
+            display:none;
+        }
+        #setup-help-text
+        {
+            cursor:pointer;
+        }
+    </style>
+    <script
+            src="https://code.jquery.com/jquery-3.6.0.min.js"
+            integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4="
+            crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.min.js" integrity="sha384-QJHtvGhmr9XOIpI6YVutG+2QOK9T+ZnN4kzFN1RtK3zEFEIsxhlmWl5/YESvpZ13" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
+
+    <script type="text/javascript">
+        (function($){
+            const NUMBER_OF_IMAGES = 56;
+            const CANVAS_WIDTH = 2400;
+            const GLYPH_WIDTH = 256;
+            let ctx;
+            let images = [];
+            let glyphCanvas, glyphImage;
+            let $setup;
+
+            function loadImage(path)
+            {
+                return new Promise((resolve, reject)=>{
+                    let image = new Image();
+                    image.onload = ()=>{resolve();};
+                    image.onerror = ()=>{reject(path);};
+                    image.src=path;
+                    images.push(image);
+                });
+            }
+
+            function shuffle(array) {
+                let currentIndex = array.length,  randomIndex;
+
+                // While there remain elements to shuffle.
+                while (currentIndex != 0) {
+
+                    // Pick a remaining element.
+                    randomIndex = Math.floor(Math.random() * currentIndex);
+                    currentIndex--;
+
+                    // And swap it with the current element.
+                    [array[currentIndex], array[randomIndex]] = [
+                        array[randomIndex], array[currentIndex]];
+                }
+
+                return array;
+            }
+
+            function turnInputStringToGlyph()
+            {
+                let valStrings = [...$setup.val().matchAll(/\d+/g)];
+                let values= [];
+                for(let value of valStrings)
+                {
+                    values.push(parseInt(value));
+                }
+
+                generateGlyph(values);
+            }
+
+            function generateGlyph(points = [12, 10, 8, 6])
+            {
+                let circleRadius = CANVAS_WIDTH / 2;
+                ctx.clearRect(0,0,CANVAS_WIDTH, CANVAS_WIDTH);
+
+                images = shuffle(images);
+                ctx.lineWidth = 3;
+                let imageIndex = 0;
+
+                for (let i = 0; i < points.length; i++)
+                {
+                    // the centre point of the image will be half the screen width - half the image width away from the centre of the glyph
+                    let r = circleRadius - GLYPH_WIDTH / 2;
+                    for(let j = 0; j < points[i]; j++)
+                    {
+                        // pick the next image from the images array, which has been shuffled
+                        let image = images[imageIndex];
+                        imageIndex++;
+                        imageIndex%=images.length;
+                        // calculate the angle at which to place it around the circle
+                        let degrees = j * 360 / points[i] - 90;
+                        let angle = (Math.PI / 180) * degrees;
+                        // the x coordinate will be the cos(angle) times that number offset by the width
+                        // the y coordinate will be the sin(angle) times that number offset by the width
+                        let x = r * Math.cos(angle) + CANVAS_WIDTH/2 - GLYPH_WIDTH/2;
+                        let y = r * Math.sin(angle) + CANVAS_WIDTH/2 - GLYPH_WIDTH/2;
+                        ctx.drawImage(image, x, y);
+
+                    }
+                    ctx.beginPath();
+                    ctx.arc(CANVAS_WIDTH/2, CANVAS_WIDTH/2, circleRadius, 0, Math.PI * 2, true);
+                    ctx.stroke();
+                    circleRadius -= GLYPH_WIDTH;
+                    ctx.beginPath();
+                    ctx.arc(CANVAS_WIDTH/2, CANVAS_WIDTH/2, circleRadius, 0, Math.PI * 2, true);
+                    ctx.stroke();
+                }
+                glyphImage.src = glyphCanvas.toDataURL('image/png');
+                glyphImage.style.display = 'block';
+
+            }
+
+
+            $(function(){
+                glyphCanvas = document.getElementById('glyph');
+                glyphImage = document.getElementById('glyphImg');
+                glyphCanvas.width = CANVAS_WIDTH;
+                glyphCanvas.height = CANVAS_WIDTH;
+                ctx = glyphCanvas.getContext('2d');
+                $setup = $('#setup');
+
+                ctx.fillStyle='#f3f5f4';
+                ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_WIDTH);
+                let promises = [];
+                for(let i = 1; i < NUMBER_OF_IMAGES + 1; i++)
+                {
+                    promises.push(loadImage(`sigils/sigil ${i}.png`));
+                }
+                Promise.all(promises).then(
+                    ()=>{
+                        let $modal = $('#setup-help-modal').modal({});
+                        turnInputStringToGlyph();
+                        $setup.change(turnInputStringToGlyph);
+                        $('#setup-help-text').click(()=>{
+                            console.log('Click event');
+                            $modal.modal('show');
+                        });
+                    }
+                );
+            });
+        })(window.jQuery);
+    </script>
+</head>
+<body>
+    <div id="main" class="container">
+        <div class="row">
+            <div id="glyphContainer" class="col">
+                <canvas id="glyph"></canvas>
+                <image id="glyphImg"/>
+            </div>
+            <div class="col">
+                <form method="post" action="#" onsubmit="return false;">
+                    <div class="row form-group">
+                        <label for="setup" class="col-sm-3 col-form-label">Circle setup</label>
+                        <div class="col-sm-5">
+                            <div class="input-group mb-3">
+                                <input class="form-control" type="text" id="setup" value="13, 7, 5"/>
+                                <div class="input-group-append" id="setup-help-text">
+                                    <span class="input-group-text">?</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="modal" tabindex="-1" role="dialog" id="setup-help-modal">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Glyph Setup Help</h5>
+                </div>
+                <div class="modal-body">
+                    <p>The glyph setup requires a set of one plus numbers. For each number, it will add a layer to the array of glyphs and populate that many glyphs into the layer.</p>
+                    <p>For example, <pre>12, 13, 7</pre> would construct a circle with 12 glyphs randomly selected from the list on the outside, then 13 glyphs in the next layer, then 7. Similarly, the script will ignore all non numbers in <pre>potato, apple fish 17, 9; 11</pre> and create a set of circlees with 17, 9 and 11 glyphs respectively.</p>
+                    <p>Glyphs do not overlap well, no more than 28 glyphs will look good in the outer ring and at that, above 27 things are dicey. The more rings you have the smaller the number becomes before things get dicey.</p>
+                    <p>The image is a png, so you can right click and save it. It is not currently possible to recreate an array image that can be hotlinked to. I can, and may, work on that.</p>
+                    <p>Click anywhere else to close</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
