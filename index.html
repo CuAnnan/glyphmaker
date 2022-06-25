@@ -46,6 +46,7 @@
                     image.onload = ()=>{resolve();};
                     image.onerror = ()=>{reject(path);};
                     image.src=path;
+                    console.log(image.src);
                     images.push(image);
                 });
             }
@@ -117,7 +118,8 @@
                     ctx.arc(CANVAS_WIDTH/2, CANVAS_WIDTH/2, circleRadius, 0, Math.PI * 2, true);
                     ctx.stroke();
                 }
-                glyphImage.src = glyphCanvas.toDataURL('image/png');
+                let image = glyphCanvas.toDataURL('image/png');
+                glyphImage.src = image;
                 glyphImage.style.display = 'block';
 
             }
