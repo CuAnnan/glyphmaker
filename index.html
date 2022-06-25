@@ -138,7 +138,7 @@
                 let promises = [];
                 for(let i = 1; i < NUMBER_OF_IMAGES + 1; i++)
                 {
-                    promises.push(loadImage(`https://sigils/sigil ${i}.png`));
+                    promises.push(loadImage(`./sigils/sigil ${i}.png`));
                 }
                 Promise.all(promises).then(
                     ()=>{
