@@ -131,12 +131,14 @@
                 ctx = glyphCanvas.getContext('2d');
                 $setup = $('#setup');
 
+                console.log(window.location);
+
                 ctx.fillStyle='#f3f5f4';
                 ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_WIDTH);
                 let promises = [];
                 for(let i = 1; i < NUMBER_OF_IMAGES + 1; i++)
                 {
-                    promises.push(loadImage(`sigils/sigil ${i}.png`));
+                    promises.push(loadImage(`https://sigils/sigil ${i}.png`));
                 }
                 Promise.all(promises).then(
                     ()=>{
