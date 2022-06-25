@@ -133,8 +133,6 @@
                 ctx = glyphCanvas.getContext('2d');
                 $setup = $('#setup');
 
-                console.log(window.location);
-
                 ctx.fillStyle='#f3f5f4';
                 ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_WIDTH);
                 let promises = [];
@@ -151,6 +149,7 @@
                             console.log('Click event');
                             $modal.modal('show');
                         });
+                        $('#runButton').click(turnInputStringToGlyph);
                     }
                 );
             });
@@ -175,6 +174,11 @@
                                     <span class="input-group-text">?</span>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                    <div class="row form-group">
+                        <div class="col">
+                            <button id="runButton" class="btn btn-primary">Run again</button>
                         </div>
                     </div>
                 </form>
