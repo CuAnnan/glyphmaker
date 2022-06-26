@@ -8,13 +8,13 @@
         {
             width: 800px;
             height: 800px;
-            display:none;
+            /*display:none;*/
         }
         #glyphImg
         {
-            width: 800px;
-            height: 800px;
-            display:none;
+            /*width: 800px;*/
+            /*height: 800px;*/
+            /*!*display:none;*!*/
         }
         #setup-help-text
         {
@@ -32,12 +32,12 @@
     <script type="text/javascript">
         (function($){
             const NUMBER_OF_IMAGES = 56;
-            const CANVAS_WIDTH = 2400;
             const GLYPH_WIDTH = 256;
             let ctx;
             let images = [];
             let glyphCanvas, glyphImage;
-            let $setup;
+            let $setup, $canvasSize;
+            let canvas_width;
 
             function loadImage(path)
             {
@@ -46,7 +46,6 @@
                     image.onload = ()=>{resolve();};
                     image.onerror = ()=>{reject(path);};
                     image.src=path;
-                    console.log(image.src);
                     images.push(image);
                 });
             }
@@ -83,8 +82,8 @@
 
             function generateGlyph(points = [12, 10, 8, 6])
             {
-                let circleRadius = CANVAS_WIDTH / 2;
-                ctx.clearRect(0,0,CANVAS_WIDTH, CANVAS_WIDTH);
+                let circleRadius = canvas_width / 2;
+                ctx.clearRect(0,0,canvas_width, canvas_width);
 
                 images = shuffle(images);
                 ctx.lineWidth = 3;
@@ -99,28 +98,41 @@
                         // pick the next image from the images array, which has been shuffled
                         let image = images[imageIndex];
                         imageIndex++;
-                        imageIndex%=images.length;
+                        if(imageIndex == images.length)
+                        {
+                            imageIndex = 0;
+                            images = shuffle(images);
+                        }
+
                         // calculate the angle at which to place it around the circle
                         let degrees = j * 360 / points[i] - 90;
                         let angle = (Math.PI / 180) * degrees;
                         // the x coordinate will be the cos(angle) times that number offset by the width
                         // the y coordinate will be the sin(angle) times that number offset by the width
-                        let x = r * Math.cos(angle) + CANVAS_WIDTH/2 - GLYPH_WIDTH/2;
-                        let y = r * Math.sin(angle) + CANVAS_WIDTH/2 - GLYPH_WIDTH/2;
+                        let x = r * Math.cos(angle) + canvas_width/2 - GLYPH_WIDTH/2;
+                        let y = r * Math.sin(angle) + canvas_width/2 - GLYPH_WIDTH/2;
                         ctx.drawImage(image, x, y);
 
                     }
                     ctx.beginPath();
-                    ctx.arc(CANVAS_WIDTH/2, CANVAS_WIDTH/2, circleRadius, 0, Math.PI * 2, true);
+                    ctx.arc(canvas_width/2, canvas_width/2, circleRadius, 0, Math.PI * 2, true);
                     ctx.stroke();
                     circleRadius -= GLYPH_WIDTH;
                     ctx.beginPath();
-                    ctx.arc(CANVAS_WIDTH/2, CANVAS_WIDTH/2, circleRadius, 0, Math.PI * 2, true);
+                    ctx.arc(canvas_width/2, canvas_width/2, circleRadius, 0, Math.PI * 2, true);
                     ctx.stroke();
                 }
-                let image = glyphCanvas.toDataURL('image/png');
-                glyphImage.src = image;
-                glyphImage.style.display = 'block';
+                // let image = glyphCanvas.toDataURL('image/png');
+                // glyphImage.src = image;
+                // glyphImage.style.display = 'block';
+
+            }
+
+            function resizeCanvas()
+            {
+                canvas_width = $canvasSize.val();
+                glyphCanvas.width = canvas_width;
+                glyphCanvas.height = canvas_width;
 
             }
 
@@ -128,13 +140,19 @@
             $(function(){
                 glyphCanvas = document.getElementById('glyph');
                 glyphImage = document.getElementById('glyphImg');
-                glyphCanvas.width = CANVAS_WIDTH;
-                glyphCanvas.height = CANVAS_WIDTH;
+
+                $canvasSize = $('#canvas-size').change(function(){
+                    resizeCanvas();
+                    turnInputStringToGlyph();
+                });
+
+                resizeCanvas();
+
                 ctx = glyphCanvas.getContext('2d');
-                $setup = $('#setup');
+                $setup = $('#setup').change(turnInputStringToGlyph);
 
                 ctx.fillStyle='#f3f5f4';
-                ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_WIDTH);
+                ctx.fillRect(0, 0, canvas_width, canvas_width);
                 let promises = [];
                 for(let i = 1; i < NUMBER_OF_IMAGES + 1; i++)
                 {
@@ -144,7 +162,6 @@
                     ()=>{
                         let $modal = $('#setup-help-modal').modal({});
                         turnInputStringToGlyph();
-                        $setup.change(turnInputStringToGlyph);
                         $('#setup-help-text').click(()=>{
                             console.log('Click event');
                             $modal.modal('show');
@@ -167,7 +184,7 @@
                 <form method="post" action="#" onsubmit="return false;">
                     <div class="row form-group">
                         <label for="setup" class="col-sm-3 col-form-label">Circle setup</label>
-                        <div class="col-sm-5">
+                        <div class="col-sm">
                             <div class="input-group mb-3">
                                 <input class="form-control" type="text" id="setup" value="13, 7, 5"/>
                                 <div class="input-group-append" id="setup-help-text">
@@ -176,6 +193,13 @@
                             </div>
                         </div>
                     </div>
+                    <div class="row form-group">
+                        <label for="canvas-size"  class="col-sm-3 col-form-label">Zoom</label>
+                        <div class="col-sm">
+                            <input class="form-control" type="text" id="canvas-size" value="3000"/>
+                        </div>
+                    </div>
+
                     <div class="row form-group">
                         <div class="col">
                             <button id="runButton" class="btn btn-primary">Run again</button>
