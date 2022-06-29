@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>Nonsense Glyph Generator</title>
     <style>
         #glyph
         {
@@ -21,6 +21,13 @@
             cursor:pointer;
         }
 
+        .sigilThumb
+        {
+            width:50px !important;
+            height:50px !important;
+            cursor:pointer;
+        }
+
 
     </style>
     <script
@@ -36,10 +43,11 @@
             const NUMBER_OF_IMAGES = 143;
             const GLYPH_WIDTH = 256;
             let ctx;
-            let images = [];
+            let images = [], imagesTaken;
             let glyphCanvas, glyphImage;
-            let $setup, $canvasSize;
+            let $setup, $canvasSize, $glyphConstructionOutputDiv, $glyphToReplace, $glyphModal, $replacementGlyphSelect, $saveString;
             let canvas_width;
+            let imageToSwap;
 
             function loadImage(path)
             {
@@ -82,41 +90,28 @@
                 generateGlyph(values);
             }
 
-            function generateGlyph(points = [12, 10, 8, 6])
+            function drawGlyph()
             {
                 let circleRadius = canvas_width / 2;
                 ctx.clearRect(0,0,canvas_width, canvas_width);
-                ctx.fillStyle='#f2f8fb';
                 ctx.fillRect(0,0,canvas_width, canvas_width)
 
-                images = shuffle(images);
-                ctx.lineWidth = 3;
-                let imageIndex = 0;
-
-                for (let i = 0; i < points.length; i++)
+                for(let i = 0; i < imagesTaken.length; i++)
                 {
+                    let layer = imagesTaken[i];
                     // the centre point of the image will be half the screen width - half the image width away from the centre of the glyph
                     let r = circleRadius - GLYPH_WIDTH / 2;
-                    for(let j = 0; j < points[i]; j++)
+                    for(let j = 0; j < layer.length; j++)
                     {
-                        // pick the next image from the images array, which has been shuffled
-                        let image = images[imageIndex];
-                        imageIndex++;
-                        if(imageIndex == images.length)
-                        {
-                            imageIndex = 0;
-                            images = shuffle(images);
-                        }
-
+                        let image = layer[j];
                         // calculate the angle at which to place it around the circle
-                        let degrees = j * 360 / points[i] - 90;
+                        let degrees = j * 360 / layer.length - 90;
                         let angle = (Math.PI / 180) * degrees;
                         // the x coordinate will be the cos(angle) times that number offset by the width
                         // the y coordinate will be the sin(angle) times that number offset by the width
                         let x = r * Math.cos(angle) + canvas_width/2 - GLYPH_WIDTH/2;
                         let y = r * Math.sin(angle) + canvas_width/2 - GLYPH_WIDTH/2;
                         ctx.drawImage(image, x, y);
-
                     }
                     ctx.beginPath();
                     ctx.arc(canvas_width/2, canvas_width/2, circleRadius, 0, Math.PI * 2, true);
@@ -126,10 +121,64 @@
                     ctx.arc(canvas_width/2, canvas_width/2, circleRadius, 0, Math.PI * 2, true);
                     ctx.stroke();
                 }
+
+            }
+
+            function generateGlyph(points = [12, 10, 8, 6])
+            {
+                images = shuffle(images);
+                let imageIndex = 0;
+                imagesTaken = [];
+
+                for (let i = 0; i < points.length; i++)
+                {
+                    imagesTaken.push([])
+                    for(let j = 0; j < points[i]; j++)
+                    {
+                        // pick the next image from the images array, which has been shuffled
+                        let image = images[imageIndex];
+                        imageIndex++;
+                        imagesTaken[i].push(image);
+                        if(imageIndex == images.length)
+                        {
+                            imageIndex = 0;
+                            images = shuffle(images);
+                        }
+                    }
+                }
                 // let image = glyphCanvas.toDataURL('image/png');
                 // glyphImage.src = image;
                 // glyphImage.style.display = 'block';
+                drawGlyph();
+                updateConstruction();
+            }
 
+            function updateConstruction()
+            {
+                $glyphConstructionOutputDiv.empty();
+                let saveStringParts = [];
+                for(let i = 0; i < imagesTaken.length; i++)
+                {
+                    $(`<h3 class="row">Layer ${i+1}</h3>`).appendTo($glyphConstructionOutputDiv);
+                    let $currentDiv = $('<div class="row"/>').appendTo($glyphConstructionOutputDiv);
+                    let layer = imagesTaken[i];
+                    let layerParts = [];
+                    for(let j = 0; j < layer.length; j++)
+                    {
+                        let glyph = layer[j];
+                        let imgSrcParts = glyph.src.split(/\//);
+                        let imgSrc = imgSrcParts.pop();
+                        $(`<div class="col"><img id="image_${i}_${j}" src="${glyph.src}" class="sigilThumb"/></div>`).appendTo($currentDiv).click(()=>{
+                            $glyphToReplace.prop('src',glyph.src);
+                            $glyphModal.modal('show');
+                            $replacementGlyphSelect.val(imgSrc).data({i:i, j:j});
+                        });
+                        let imgId = [...imgSrc.matchAll(/\d+/g)][0][0].toString().substring(2);
+                        layerParts.push(imgId);
+                    }
+                    saveStringParts.push(layerParts.join(','));
+                }
+                $saveString.val(saveStringParts.join(';'));
             }
 
             function resizeCanvas()
@@ -137,7 +186,38 @@
                 canvas_width = $canvasSize.val();
                 glyphCanvas.width = canvas_width;
                 glyphCanvas.height = canvas_width;
+            }
 
+            function swapGlyph()
+            {
+                let newGlyph =$replacementGlyphSelect.val();
+                let newSrc = `./sigils/${newGlyph}`;
+                $glyphToReplace.prop("src", newSrc);
+                let data = $replacementGlyphSelect.data();
+                imagesTaken[data.i][data.j].src = newSrc;
+                $(`#image_${data.i}_${data.j}`).prop('src',newSrc);
+                drawGlyph();
+                updateConstruction();
+            }
+
+            function loadSaveString()
+            {
+                let layersRaw = $(this).val().split(';');
+                imagesTaken = [];
+                for(let layerRaw of layersRaw)
+                {
+                    let layer = layerRaw.split(',');
+                    let layerImages = [];
+                    for(let imageSrc of layer)
+                    {
+                        let image = new Image();
+                        image.src = `./sigils/sigil%20${imageSrc}.png`;
+                        layerImages.push(image);
+                    }
+                    imagesTaken.push(layerImages);
+                }
+                drawGlyph();
+                updateConstruction();
             }
 
 
@@ -153,21 +233,29 @@
                 resizeCanvas();
 
                 ctx = glyphCanvas.getContext('2d');
+                ctx.fillStyle='#f2f8fb';
+                ctx.lineWidth = 3;
                 $setup = $('#setup').change(turnInputStringToGlyph);
+                $glyphConstructionOutputDiv = $('#glyphConstructionOutputDiv');
+                $glyphToReplace = $('#glyphToReplace');
+                $glyphModal = $('#glyph-replacement-modal').modal({});
+                $saveString = $('#save-string').change(loadSaveString);
 
                 ctx.fillStyle='#f3f5f4';
                 ctx.fillRect(0, 0, canvas_width, canvas_width);
                 let promises = [];
+                $replacementGlyphSelect = $('#replacementGlyphSelect').change(swapGlyph);
+
                 for(let i = 1; i < NUMBER_OF_IMAGES + 1; i++)
                 {
                     promises.push(loadImage(`./sigils/sigil%20${i}.png`));
+                    $replacementGlyphSelect.append($(`<option>Sigil ${i}</option>`).val(`sigil%20${i}.png`));
                 }
                 Promise.all(promises).then(
                     ()=>{
                         let $modal = $('#setup-help-modal').modal({});
                         turnInputStringToGlyph();
                         $('#setup-help-text').click(()=>{
-                            console.log('Click event');
                             $modal.modal('show');
                         });
                         $('#runButton').click(turnInputStringToGlyph);
@@ -185,6 +273,7 @@
                 <img id="glyphImg"/>
             </div>
             <div class="col">
+                <h2 class="row">Input</h2>
                 <form method="post" action="#" onsubmit="return false;">
                     <div class="row form-group">
                         <label for="setup" class="col-sm-3 col-form-label">Circle setup</label>
@@ -210,6 +299,18 @@
                         </div>
                     </div>
                 </form>
+                <h2 class="row">Output</h2>
+                <div class="row">
+                    <label class="col-form-label col-sm-3" for="save-string">Save string:</label>
+                    <div class="col-sm">
+                        <div class="input-group mb-3">
+                            <input class="form-control" type="text" id="save-string"/>
+                        </div>
+                    </div>
+                </div>
+                <div class="container" id="glyphConstructionOutputDiv">
+
+                </div>
             </div>
         </div>
     </div>
@@ -225,6 +326,23 @@
                     <p>Glyphs do not overlap well, no more than 28 glyphs will look good in the outer ring and at that, above 27 things are dicey. The more rings you have the smaller the number becomes before things get dicey.</p>
                     <p>The image is a png, so you can right click and save it. It is not currently possible to recreate an array image that can be hotlinked to. I can, and may, work on that.</p>
                     <p>Click anywhere else to close</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal bd-example-modal-lg" tabindex="-1" role="dialog" id="glyph-replacement-modal">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Glyph Swap</h5>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <label class="col-sm-3">Replace glyph</label>
+                        <div class="col-sm-5"><img id="glyphToReplace"/></div>
+                        <div class="col-sm-1"><select id="replacementGlyphSelect"></select></div>
+                    </div>
                 </div>
             </div>
         </div>
