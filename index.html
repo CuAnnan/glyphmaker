@@ -129,7 +129,6 @@
                 images = shuffle(images);
                 let imageIndex = 0;
                 imagesTaken = [];
-
                 for (let i = 0; i < points.length; i++)
                 {
                     imagesTaken.push([])
@@ -146,9 +145,6 @@
                         }
                     }
                 }
-                // let image = glyphCanvas.toDataURL('image/png');
-                // glyphImage.src = image;
-                // glyphImage.style.display = 'block';
                 drawGlyph();
                 updateConstruction();
             }
